@@ -1,0 +1,74 @@
+# -*- coding: utf-8 -*-
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.models import Model
+from keras.layers import Input, Dense
+from keras.datasets import mnist
+
+# 1. Configuration and Data Preparation
+encoding_dim = 64  # Size of the "bottleneck" layer
+input_img = Input(shape=(784,))
+
+# 2. Define the Architecture
+# "encoded" is the compressed representation
+encoded = Dense(encoding_dim, activation='relu')(input_img)
+# "decoded" is the reconstruction of the input
+decoded = Dense(784, activation='sigmoid')(encoded)
+
+# This model maps an input to its reconstruction
+autoencoder = Model(input_img, decoded)
+
+# Create a separate encoder model
+encoder = Model(input_img, encoded)
+
+# Create a separate decoder model
+encoded_input = Input(shape=(encoding_dim,))
+decoder_layer = autoencoder.layers[-1]
+decoder = Model(encoded_input, decoder_layer(encoded_input))
+
+# Compile the model
+# Changed optimizer to 'adam' for faster convergence than 'adadelta'
+autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
+
+# 3. Load and Preprocess MNIST data
+(x_train, _), (x_test, _) = mnist.load_data()
+
+# Normalize all values between 0 and 1 and flatten 28x28 images into 784 vectors
+x_train = x_train.astype('float32') / 255.
+x_test = x_test.astype('float32') / 255.
+x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
+x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
+
+print(f'x_train shape: {x_train.shape}')
+print(f'x_test shape: {x_test.shape}')
+
+# 4. Training
+# We use x_train as both the input and the target
+autoencoder.fit(x_train, x_train,
+                epochs=50,
+                batch_size=256,
+                shuffle=True,
+                validation_data=(x_test, x_test))
+
+# 5. Predict and Visualize
+encoded_imgs = encoder.predict(x_test)
+decoded_imgs = decoder.predict(encoded_imgs)
+
+n = 10  # Number of digits to display
+plt.figure(figsize=(20, 4))
+for i in range(n):
+    # Display Original
+    ax = plt.subplot(2, n, i + 1)
+    plt.imshow(x_test[i].reshape(28, 28))
+    plt.gray()
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+
+    # Display Reconstruction
+    ax = plt.subplot(2, n, i + 1 + n)
+    plt.imshow(decoded_imgs[i].reshape(28, 28))
+    plt.gray()
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+
+plt.show()

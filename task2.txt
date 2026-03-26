@@ -1,0 +1,46 @@
+import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPool2D, Flatten, Dropout, Dense
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 1. Load and reshape the MNIST dataset
+(X_train, y_train), (X_test, y_test) = mnist.load_data()
+
+# Reshape data to include the channel dimension (28, 28, 1)
+X_train = X_train.reshape((X_train.shape[0], 28, 28, 1))
+X_test = X_test.reshape((X_test.shape[0], 28, 28, 1))
+
+# 2. Normalize pixel values to be between 0 and 1
+X_train = X_train.astype('float32') / 255
+X_test = X_test.astype('float32') / 255
+
+print(f"Training shape: {X_train.shape}")
+print(f"Testing shape: {X_test.shape}")
+
+# 3. Build the Model
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    MaxPool2D(2, 2),
+    Flatten(),
+    Dense(100, activation='relu'),
+    Dense(10, activation='softmax')
+])
+
+# 4. Compile and Train
+model.compile(loss='sparse_categorical_crossentropy', 
+              optimizer='adam', 
+              metrics=['accuracy'])
+
+model.fit(X_train, y_train, epochs=10)
+
+# 5. Evaluate the model
+loss, accuracy = model.evaluate(X_test, y_test)
+print(f"\nTest Accuracy: {accuracy*100:.2f}%")
+
+# Optional: Visualize a prediction
+plt.imshow(X_test[0].reshape(28, 28), cmap='gray')
+prediction = model.predict(X_test[0:1])
+plt.title(f"Predicted Label: {np.argmax(prediction)}")
+plt.show()

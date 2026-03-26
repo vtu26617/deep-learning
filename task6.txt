@@ -1,0 +1,72 @@
+# Import libraries
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# =========================
+# Sample corpus
+# =========================
+corpus = [
+    'I enjoy playing football',
+    'Football is my favorite sport',
+    'I watch football matches regularly'
+]
+
+# =========================
+# Tokenize the corpus
+# =========================
+tokenizer = Tokenizer()
+tokenizer.fit_on_texts(corpus)
+
+total_words = len(tokenizer.word_index) + 1
+
+# Convert text to sequences
+sequences = tokenizer.texts_to_sequences(corpus)
+
+# Pad sequences to have same length
+max_sequence_length = max([len(seq) for seq in sequences])
+padded_sequences = pad_sequences(sequences, maxlen=max_sequence_length, padding='post')
+
+# =========================
+# Prepare input and target data
+# =========================
+input_data = padded_sequences[:, :-1]
+target_data = padded_sequences[:, -1]
+
+# =========================
+# Build the RNN model
+# =========================
+embedding_dim = 10
+
+model = Sequential()
+model.add(Embedding(input_dim=total_words, output_dim=embedding_dim, input_length=max_sequence_length-1))
+model.add(LSTM(50))
+model.add(Dense(total_words, activation='softmax'))
+
+model.summary()
+
+# =========================
+# Compile the model
+# =========================
+model.compile(
+    loss='sparse_categorical_crossentropy',
+    optimizer='adam',
+    metrics=['accuracy']
+)
+
+# =========================
+# Train the model
+# =========================
+model.fit(input_data, target_data, epochs=100, verbose=1)
+
+# =========================
+# Get the word embeddings
+# =========================
+word_embeddings = model.layers[0].get_weights()[0]
+
+# Print word embeddings
+for word, index in tokenizer.word_index.items():
+    embedding_vector = word_embeddings[index]
+    print(f"{word}: {embedding_vector}")
